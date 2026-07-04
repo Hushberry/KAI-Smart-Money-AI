@@ -10,15 +10,13 @@ def show_dashboard(account):
     print("         KAI_BOT MARKET TERMINAL")
     print("=" * config.LINE_WIDTH)
 
-    print("Connection : ✅ Connected")
-    
-    print(f"{'Date':<12} : {current_time.strftime('%d %b %Y')}")
-    print(f"{'Time':<12} : {current_time.strftime('%H:%M:%S')}")
-
-    print(f"{'Account':<12} : {account.login}")
-    print(f"{'Balance':<12} : ${account.balance:,.2f}")
-    print(f"{'Equity':<12} : ${account.equity:,.2f}")
-    print(f"{'Server':<12} : {account.server}")
+    print(f"{'Connection':<12}: ✅ Connected")
+    print(f"{'Date':<12}: {current_time.strftime('%d %b %Y')}")
+    print(f"{'Time':<12}: {current_time.strftime('%H:%M:%S')}")
+    print(f"{'Account':<12}: {account.login}")
+    print(f"{'Server':<12}: {account.server}")
+    print(f"{'Balance':<12}: ${account.balance:,.2f}")
+    print(f"{'Equity':<12}: ${account.equity:,.2f}")
 
     print()
 
