@@ -11,4 +11,4 @@ def get_trade_bias(trend):
         return "📉 SELL"
     
     else:
-        return "⏸️ WAIT"
+        return "⏸️  WAIT"
