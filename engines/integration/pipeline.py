@@ -6,7 +6,7 @@ Integration Layer
 
 pipeline.py
 
-Main Analysis Pipeline
+Engine Communication Pipeline
 
 Author: Vincent Chimezirim
 =========================================================
@@ -16,21 +16,17 @@ from __future__ import annotations
 
 
 
-# ==========================================================
-# ENGINE IMPORTS
-# ==========================================================
+from engines.swing import (
 
-from engines.confluence import (
-
-    ConfluenceEngine,
+    SwingEngine,
 
 )
 
 
 
-from engines.fair_value_gap import (
+from engines.market_structure import (
 
-    FairValueGapEngine,
+    MarketStructureEngine,
 
 )
 
@@ -44,49 +40,27 @@ from engines.order_block import (
 
 
 
-# Temporary imports
-# These will be replaced after rebuilding
-# Swing / Market Structure / Liquidity engines
+from engines.fair_value_gap import (
 
-try:
+    FairValueGapEngine,
 
-    from engines.market_structure import (
-
-        MarketStructureEngine,
-
-    )
-
-except ImportError:
-
-    MarketStructureEngine = None
+)
 
 
 
-try:
+from engines.confluence import (
 
-    from engines.liquidity import (
+    ConfluenceEngine,
 
-        LiquidityEngine,
-
-    )
-
-except ImportError:
-
-    LiquidityEngine = None
+)
 
 
 
-try:
+from engines.liquidity import (
 
-    from engines.swing import (
+    LiquidityEngine,
 
-        SwingEngine,
-
-    )
-
-except ImportError:
-
-    SwingEngine = None
+)
 
 
 
@@ -97,153 +71,126 @@ except ImportError:
 # ==========================================================
 
 class KAIAnalysisPipeline:
-    """
-    Central KAI analysis coordinator.
-
-    Controls communication between engines.
-    """
-
 
 
     def __init__(self):
 
 
-        self.order_block_engine = (
-
-            OrderBlockEngine()
-
-        )
+        self.swing_engine = SwingEngine()
 
 
-        self.fvg_engine = (
-
-            FairValueGapEngine()
-
-        )
+        self.market_structure_engine = MarketStructureEngine()
 
 
-        self.confluence_engine = (
-
-            ConfluenceEngine()
-
-        )
+        self.liquidity_engine = LiquidityEngine()
 
 
-
-        self.market_structure_engine = (
-
-            MarketStructureEngine()
-
-            if MarketStructureEngine
-
-            else None
-
-        )
+        self.order_block_engine = OrderBlockEngine()
 
 
-
-        self.liquidity_engine = (
-
-            LiquidityEngine()
-
-            if LiquidityEngine
-
-            else None
-
-        )
+        self.fvg_engine = FairValueGapEngine()
 
 
-
-        self.swing_engine = (
-
-            SwingEngine()
-
-            if SwingEngine
-
-            else None
-
-        )
+        self.confluence_engine = ConfluenceEngine()
 
 
 
     # ======================================================
-    # RUN ANALYSIS
+    # RUN
     # ======================================================
 
     def run(
         self,
         candles,
     ):
-        """
-        Execute complete KAI analysis.
-        """
-
 
 
         # ----------------------------------------------
-        # Swing
+        # 1. Swing Detection
         # ----------------------------------------------
 
-        swing_data = None
+        swing_result = self.swing_engine.analyze(
+
+            candles
+
+        )
 
 
-        if self.swing_engine:
 
+        swing_collection = (
 
-            swing_data = self.swing_engine.analyze(
+            self.swing_engine.detect(
 
                 candles
 
             )
 
+        )
 
 
-        # ----------------------------------------------
-        # Market Structure
-        # ----------------------------------------------
 
-        structure = None
+        swing_collection = (
 
+            self.swing_engine.validate(
 
-        if self.market_structure_engine:
-
-
-            structure = (
-
-                self.market_structure_engine.analyze(
-
-                    candles
-
-                )
+                swing_collection
 
             )
 
+        )
 
 
-        # ----------------------------------------------
-        # Liquidity
-        # ----------------------------------------------
 
-        liquidity = None
+        swing_collection = (
 
+            self.swing_engine.score(
 
-        if self.liquidity_engine:
-
-
-            liquidity = (
-
-                self.liquidity_engine.analyze(
-
-                    candles
-
-                )
+                swing_collection
 
             )
 
+        )
+
 
 
         # ----------------------------------------------
-        # Order Blocks
+        # 2. Market Structure
+        # ----------------------------------------------
+
+        structure = (
+
+            self.market_structure_engine.analyze(
+
+                candles,
+
+                swing_collection,
+
+            )
+
+        )
+
+
+
+        # ----------------------------------------------
+        # 3. Liquidity
+        # ----------------------------------------------
+
+        liquidity = (
+
+            self.liquidity_engine.analyze(
+
+                candles,
+
+                structure,
+
+            )
+
+        )
+
+
+
+        # ----------------------------------------------
+        # 4. Order Blocks
         # ----------------------------------------------
 
         order_blocks = (
@@ -263,10 +210,10 @@ class KAIAnalysisPipeline:
 
 
         # ----------------------------------------------
-        # Fair Value Gaps
+        # 5. Fair Value Gaps
         # ----------------------------------------------
 
-        fvg_result = (
+        fvgs = (
 
             self.fvg_engine.analyze(
 
@@ -279,37 +226,9 @@ class KAIAnalysisPipeline:
         )
 
 
-        fvgs = fvg_result.get(
-
-            "fvgs",
-
-            []
-
-        )
-
-
 
         # ----------------------------------------------
-        # Direction
-        # ----------------------------------------------
-
-        direction = "neutral"
-
-
-        if structure:
-
-            direction = structure.get(
-
-                "trend",
-
-                "neutral"
-
-            )
-
-
-
-        # ----------------------------------------------
-        # Confluence
+        # 6. Confluence
         # ----------------------------------------------
 
         confluence = (
@@ -324,8 +243,6 @@ class KAIAnalysisPipeline:
 
                 structure,
 
-                direction=direction,
-
             )
 
         )
@@ -335,9 +252,9 @@ class KAIAnalysisPipeline:
         return {
 
 
-            "swing":
+            "swings":
 
-                swing_data,
+                swing_result,
 
 
             "market_structure":
@@ -368,10 +285,6 @@ class KAIAnalysisPipeline:
         }
 
 
-
-# ==========================================================
-# EXPORT
-# ==========================================================
 
 __all__ = [
 
